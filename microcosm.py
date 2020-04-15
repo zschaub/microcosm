@@ -4,15 +4,26 @@ from googletrans import Translator
 
 app = Flask(__name__)
 
+# First element is language name, second is Google Translate language code, third is twilio Alice language code
+languages = [["Danish", 'da', 'da-DK'], ["German", 'de', 'de-DE'], ["English", 'en', 'en-US'],
+              ["Catalan", 'ca', 'ca-ES'], ["Spanish", 'es', 'es-ES'], ["Finish", 'fi', 'fi-FI'],
+              ["French", 'fr', 'fr-FR'], ["Italian", 'it', 'it-IT'], ["Japanese", 'ja', 'ja-JP'],
+              ["Korean", 'ko', 'ko-KR'], ["Norwegian", 'nb', 'nb-NO'], ["Dutch", 'nl', 'nl-NL'],
+              ["Polish", 'pl', 'pl-PL'], ["Portuguese", 'pt', 'pt-PT'], ["Russian", 'ru', 'ru-RU'],
+              ["Swedish", 'sv', 'sv-SE'], ["Chinese Manderin", 'zh-CN', 'zh-CN']]
+
+source = 2
+destination = 2
 
 @app.route("/voice", methods=['GET', 'POST'])
 def voice():
     """Respond to incoming phone calls with a menu of options"""
-
     resp = VoiceResponse()
 
     gather = Gather(num_digits=1, action='/gather')
-    gather.say('For English to Spanish translation, press 1. For English to French translation, press 2. For English to Italian translation, press 3.')
+    gather.say(
+        'For Spanish press 1, for Italian press 2, for German press 3, for French press 4, for Mandarin Chinese '
+        'press 5, for Japanese press 6', voice='Alice', language=languages[source][2])
     resp.append(gather)
 
     # If the user doesn't select an option, redirect them into a loop
@@ -25,65 +36,54 @@ def voice():
 def gather():
     """Processes results from the <Gather> prompt in /voice"""
     resp = VoiceResponse()
-
+    global destination
     # If Twilio's request to our app included already gathered digits,
     # process them
     if 'Digits' in request.values:
         # Get which digit the caller chose
         choice = request.values['Digits']
 
+        gather = Gather(input='speech', action='/translate')
         # <Say> a different message depending on the caller's choice
         if choice == '1':
-            gather = Gather(input='speech', action='/spanish')
-            gather.say('You have picked Spanish, speak your message now')
+            destination = 4
+            gather.say('You have picked Spanish, speak your message now', voice='Alice', language=languages[source][2])
             resp.append(gather)
         elif choice == '2':
-            gather = Gather(input='speech', action='/french')
-            gather.say('You have picked french, speak your message now')
+            destination = 7
+            gather.say('You have picked Italian, speak your message now', voice='Alice', language=languages[source][2])
             resp.append(gather)
         elif choice == '3':
-            gather = Gather(input='speech', action='/italian')
-            gather.say('You have picked italian, speak your message now')
+            destination = 1
+            gather.say('You have picked German, speak your message now', voice='Alice', language=languages[source][2])
+            resp.append(gather)
+        elif choice == '4':
+            destination = 6
+            gather.say('You have picked French, speak your message now', voice='Alice', language=languages[source][2])
+            resp.append(gather)
+        elif choice == '5':
+            destination = 16
+            gather.say('You have picked Mandarin Chinese, speak your message now', voice='Alice', language=languages[source][2])
+            resp.append(gather)
+        elif choice == '6':
+            destination = 8
+            gather.say('You have picked Japanese, speak your message now', voice='Alice', language=languages[source][2])
             resp.append(gather)
         else:
-            resp.say("Sorry, I don't understand that choice.")
+            resp.say("Sorry, I don't understand that choice.", voice='Alice', language=languages[source][2])
 
     return str(resp)
 
 
-@app.route("/spanish", methods=['POST'])
-def spanish():
+@app.route("/translate", methods=['GET', 'POST'])
+def translate():
     translator = Translator()
     resp = VoiceResponse()
     # print(request.values)
     userSpeech = request.form['SpeechResult']
-    x = translator.translate(userSpeech, src='en', dest='es')
+    x = translator.translate(userSpeech, src=languages[source][1], dest=languages[destination][1])
     translatedText = x.text
-    resp.say(translatedText, language='es')
-    return str(resp)
-
-
-@app.route("/french", methods=['GET', 'POST'])
-def french():
-    translator = Translator()
-    resp = VoiceResponse()
-    # print(request.values)
-    userSpeech = request.form['SpeechResult']
-    x = translator.translate(userSpeech, src='en', dest='fr')
-    translatedText = x.text
-    resp.say(translatedText, language='fr')
-    return str(resp)
-
-
-@app.route("/italian", methods=['GET', 'POST'])
-def italian():
-    translator = Translator()
-    resp = VoiceResponse()
-    # print(request.values)
-    userSpeech = request.form['SpeechResult']
-    x = translator.translate(userSpeech, src='en', dest='it')
-    translatedText = x.text
-    resp.say(translatedText, language='it')
+    resp.say(translatedText, voice='Alice', language=languages[destination][2])
     return str(resp)
 
 
